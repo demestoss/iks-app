@@ -1,6 +1,7 @@
 'use server'
 import { encodedRedirect } from "@/app/utils";
 import { createClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 
 export const signUpAction = async (formData: FormData) => {
@@ -34,18 +35,21 @@ export const signUpAction = async (formData: FormData) => {
 
 export const signUpWithGithubAction = async () => {
 	const supabase = createClient();
+    const origin = headers().get("origin");
 
-	const { error } = await supabase.auth.signInWithOAuth({
-		provider: 'github'
+	const { error, data } = await supabase.auth.signInWithOAuth({
+		provider: 'github',
+        options: {
+            redirectTo: `${origin}/auth/callback`,
+        }
 	});
+
+    console.log(data, error)
 
 	if (error) {
 		console.error(`${error.code} ${error.message}`);
 		return encodedRedirect("error", "/sign-up", error.message);
 	}
-	return encodedRedirect(
-		"success",
-		"/sign-up",
-		"Thanks for signing up! Please check your email for a verification link.",
-	);
+
+    redirect(data.url)
 };

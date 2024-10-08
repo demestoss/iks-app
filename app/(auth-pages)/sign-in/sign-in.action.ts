@@ -1,6 +1,7 @@
-'use server';
+"use server";
 import { encodedRedirect } from "@/app/utils";
 import { createClient } from "@/lib/supabase/server";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 export const signInAction = async (formData: FormData) => {
@@ -8,7 +9,7 @@ export const signInAction = async (formData: FormData) => {
 	const password = formData.get("password")?.toString();
 	const supabase = createClient();
 
-    if (!email || !password) {
+	if (!email || !password) {
 		return { error: "Email and password are required" };
 	}
 
@@ -26,14 +27,18 @@ export const signInAction = async (formData: FormData) => {
 
 export const signInWithGithubAction = async () => {
 	const supabase = createClient();
+	const origin = headers().get("origin");
 
-	const { error } = await supabase.auth.signInWithOAuth({
-		provider: 'github'
+	const { error, data } = await supabase.auth.signInWithOAuth({
+		provider: "github",
+		options: {
+			redirectTo: `${origin}/auth/callback`,
+		},
 	});
 
 	if (error) {
 		return encodedRedirect("error", "/sign-in", error.message);
 	}
 
-	return redirect("/protected");
+	return redirect(data.url);
 };
