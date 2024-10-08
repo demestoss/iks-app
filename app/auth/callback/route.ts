@@ -10,15 +10,25 @@ export async function GET(request: Request) {
 	const origin = requestUrl.origin;
 	const redirectTo = requestUrl.searchParams.get("redirect_to")?.toString();
 
+	const next = redirectTo ?? "/protected";
+
 	if (code) {
 		const supabase = createClient();
-		await supabase.auth.exchangeCodeForSession(code);
+		const { error } = await supabase.auth.exchangeCodeForSession(code);
+		if (!error) {
+			const forwardedHost = request.headers.get("x-forwarded-host"); // original origin before load balancer
+			const isLocalEnv = process.env.NODE_ENV === "development";
+			if (isLocalEnv) {
+				// we can be sure that there is no load balancer in between, so no need to watch for X-Forwarded-Host
+				return NextResponse.redirect(`${origin}${next}`);
+			}
+			if (forwardedHost) {
+				return NextResponse.redirect(`https://${forwardedHost}${next}`);
+			}
+			return NextResponse.redirect(`${origin}${next}`);
+		}
 	}
 
-	if (redirectTo) {
-		return NextResponse.redirect(`${origin}${redirectTo}`);
-	}
-
-	// URL to redirect to after sign up process completes
-	return NextResponse.redirect(`${origin}/protected`);
+  	// return the user to an error page with instructions
+  	return NextResponse.redirect(`${origin}/sign-in`)
 }
