@@ -44,8 +44,6 @@ export const signUpWithGithubAction = async () => {
         }
 	});
 
-    console.log(data, error)
-
 	if (error) {
 		console.error(`${error.code} ${error.message}`);
 		return encodedRedirect("error", "/sign-up", error.message);
